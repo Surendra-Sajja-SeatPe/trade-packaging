@@ -1,6 +1,10 @@
 import { useState, useMemo } from 'react'
 import './App.css'
 import { PRODUCTS_DATA, CERTIFICATIONS, FAQS, type Product } from './data/products'
+import { TradeAccountModal } from './components/TradeAccountModal'
+import { ContactModal } from './components/ContactModal'
+import { tradeService } from './services/tradeService'
+import type { TradeUser } from './types/trade'
 
 interface CartItem {
   product: Product;
@@ -20,6 +24,22 @@ function App() {
   const [isOrderCheckoutModalOpen, setIsOrderCheckoutModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  // Mobile Navigation Drawer State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+
+  // Trade Account & Contact Modal States
+  const [currentUser, setCurrentUser] = useState<TradeUser | null>(() => tradeService.getActiveUser());
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState<boolean>(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState<boolean>(false);
+  const [contactDefaultType, setContactDefaultType] = useState<'custom_printing' | 'pallet_discount' | 'sample_kit' | 'general'>('custom_printing');
+
+  // Handle 1-Click Reorder from Trade Dashboard
+  const handleReorder = (items: CartItem[]) => {
+    setQuoteCart(items);
+    setIsDrawerOpen(true);
+    showToast('🔁 Past order re-loaded into Quote Cart!');
+  };
 
   // Eco Calculator State
   const [monthlyUsage, setMonthlyUsage] = useState<number>(15000);
@@ -492,33 +512,144 @@ function App() {
           </div>
         </a>
 
-        <nav className="main-nav" aria-label="Main Navigation">
+        {/* Desktop Main Nav */}
+        <nav className="main-nav desktop-only" aria-label="Main Navigation">
           <a href="#catalog">Products</a>
           <a href="#eco-calculator">Eco ROI</a>
           <a href="#branding">Custom Print</a>
           <a href="#certifications">Standards</a>
+          <a 
+            href="#contact-section"
+            onClick={(e) => {
+              e.preventDefault();
+              setContactDefaultType('general');
+              setIsContactModalOpen(true);
+            }}
+          >
+            Contact Us
+          </a>
           <a href="#faq">FAQ</a>
         </nav>
 
+        {/* Header Actions */}
         <div className="nav-actions">
           <button
             type="button"
-            className="button button-ghost small-button"
+            className="button button-secondary small-button trade-nav-btn"
+            onClick={() => setIsTradeModalOpen(true)}
+          >
+            <span>🏢</span>
+            <span className="trade-btn-text">{currentUser ? currentUser.companyName : 'Trade Account'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="button button-ghost small-button desktop-only"
             onClick={() => setIsSampleModalOpen(true)}
           >
-            Request Free Samples
+            Request Samples
           </button>
+
           <button
             type="button"
             className="button button-primary cart-button small-button"
             onClick={() => setIsDrawerOpen(true)}
           >
-            <span>Quote Cart</span>
+            <span>Cart</span>
             {cartSummary.totalCartons > 0 && (
               <span className="cart-badge">{cartSummary.totalCartons}</span>
             )}
           </button>
+
+          {/* Mobile Hamburger Toggle */}
+          <button
+            type="button"
+            className="hamburger-toggle mobile-only"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? '✕' : '☰'}
+          </button>
         </div>
+
+        {/* Mobile Navigation Drawer Overlay */}
+        {isMobileMenuOpen && (
+          <div className="mobile-menu-overlay animate-fade-in">
+            <div className="mobile-menu-content">
+              {/* Account Quick Card */}
+              <div 
+                className="mobile-account-card"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsTradeModalOpen(true);
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.4rem' }}>🏢</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>
+                      {currentUser ? currentUser.companyName : 'Trade Account Portal'}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#ea580c', fontWeight: 700 }}>
+                      {currentUser ? '✓ Verified 5% Trade Member' : 'Tap to log in & access trade pricing →'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Links */}
+              <div className="mobile-nav-links">
+                <a href="#catalog" onClick={() => setIsMobileMenuOpen(false)}>
+                  <span>📦 Products Catalog</span>
+                  <span>→</span>
+                </a>
+                <a href="#eco-calculator" onClick={() => setIsMobileMenuOpen(false)}>
+                  <span>🌱 Eco ROI Calculator</span>
+                  <span>→</span>
+                </a>
+                <a href="#branding" onClick={() => setIsMobileMenuOpen(false)}>
+                  <span>🎨 Custom Print & Embossing</span>
+                  <span>→</span>
+                </a>
+                <a href="#certifications" onClick={() => setIsMobileMenuOpen(false)}>
+                  <span>🏆 Quality Standards</span>
+                  <span>→</span>
+                </a>
+                <a 
+                  href="#contact-section" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsMobileMenuOpen(false);
+                    setContactDefaultType('general');
+                    setIsContactModalOpen(true);
+                  }}
+                >
+                  <span>💬 Contact Wholesale Desk</span>
+                  <span>→</span>
+                </a>
+                <a href="#faq" onClick={() => setIsMobileMenuOpen(false)}>
+                  <span>❓ Frequently Asked Questions</span>
+                  <span>→</span>
+                </a>
+              </div>
+
+              {/* Action CTAs */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="button button-primary"
+                  style={{ width: '100%', padding: '12px', fontSize: '0.9rem' }}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsSampleModalOpen(true);
+                  }}
+                >
+                  🎁 Request Free Sample Kit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main>
@@ -1719,7 +1850,23 @@ function App() {
           </div>
         )
       }
-    </div >
+
+      {/* Trade Account Portal Modal */}
+      <TradeAccountModal
+        isOpen={isTradeModalOpen}
+        onClose={() => setIsTradeModalOpen(false)}
+        currentUser={currentUser}
+        onUserUpdate={(user) => setCurrentUser(user)}
+        onReorder={handleReorder}
+      />
+
+      {/* Contact & Custom Printing Inquiry Modal */}
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        defaultInquiryType={contactDefaultType}
+      />
+    </div>
   );
 }
 

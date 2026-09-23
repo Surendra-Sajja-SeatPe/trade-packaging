@@ -1,16 +1,9 @@
+import type { Product } from '../data/products';
+
 export type BusinessType = 'restaurant' | 'caterer' | 'takeaway' | 'dark_kitchen' | 'wholesaler' | 'other';
 
 export interface CartItem {
-  product: {
-    id: string;
-    name: string;
-    specs: {
-      modelCode: string;
-      packSize: number;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
+  product: Product;
   cartons: number;
 }
 
@@ -35,7 +28,7 @@ export interface TradeUser {
 export interface TradeOrder {
   id: string;
   date: string;
-  items: any[];
+  items: CartItem[];
   subtotal: number;
   vatAmount: number;
   totalAmount: number;
