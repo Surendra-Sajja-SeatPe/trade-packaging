@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react'
 import './App.css'
 import { PRODUCTS_DATA, CERTIFICATIONS, FAQS, type Product } from './data/products'
-import { TradeAccountModal } from './components/TradeAccountModal'
 import { ContactModal } from './components/ContactModal'
-import { tradeService } from './services/tradeService'
-import type { TradeUser } from './types/trade'
 
 interface CartItem {
   product: Product;
@@ -25,21 +22,10 @@ function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
-  // Mobile Navigation Drawer State
+  // Mobile Navigation Drawer & Contact Modal States
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-
-  // Trade Account & Contact Modal States
-  const [currentUser, setCurrentUser] = useState<TradeUser | null>(() => tradeService.getActiveUser());
-  const [isTradeModalOpen, setIsTradeModalOpen] = useState<boolean>(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState<boolean>(false);
   const [contactDefaultType, setContactDefaultType] = useState<'custom_printing' | 'pallet_discount' | 'sample_kit' | 'general'>('custom_printing');
-
-  // Handle 1-Click Reorder from Trade Dashboard
-  const handleReorder = (items: CartItem[]) => {
-    setQuoteCart(items);
-    setIsDrawerOpen(true);
-    showToast('🔁 Past order re-loaded into Quote Cart!');
-  };
 
   // Eco Calculator State
   const [monthlyUsage, setMonthlyUsage] = useState<number>(15000);
@@ -535,15 +521,6 @@ function App() {
         <div className="nav-actions">
           <button
             type="button"
-            className="button button-secondary small-button trade-nav-btn"
-            onClick={() => setIsTradeModalOpen(true)}
-          >
-            <span>🏢</span>
-            <span className="trade-btn-text">{currentUser ? currentUser.companyName : 'Trade Account'}</span>
-          </button>
-
-          <button
-            type="button"
             className="button button-ghost small-button desktop-only"
             onClick={() => setIsSampleModalOpen(true)}
           >
@@ -555,7 +532,7 @@ function App() {
             className="button button-primary cart-button small-button"
             onClick={() => setIsDrawerOpen(true)}
           >
-            <span>Cart</span>
+            <span>Quote Cart</span>
             {cartSummary.totalCartons > 0 && (
               <span className="cart-badge">{cartSummary.totalCartons}</span>
             )}
@@ -576,27 +553,6 @@ function App() {
         {isMobileMenuOpen && (
           <div className="mobile-menu-overlay animate-fade-in">
             <div className="mobile-menu-content">
-              {/* Account Quick Card */}
-              <div 
-                className="mobile-account-card"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsTradeModalOpen(true);
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '1.4rem' }}>🏢</span>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>
-                      {currentUser ? currentUser.companyName : 'Trade Account Portal'}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#ea580c', fontWeight: 700 }}>
-                      {currentUser ? '✓ Verified 5% Trade Member' : 'Tap to log in & access trade pricing →'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Navigation Links */}
               <div className="mobile-nav-links">
                 <a href="#catalog" onClick={() => setIsMobileMenuOpen(false)}>
@@ -1850,15 +1806,6 @@ function App() {
           </div>
         )
       }
-
-      {/* Trade Account Portal Modal */}
-      <TradeAccountModal
-        isOpen={isTradeModalOpen}
-        onClose={() => setIsTradeModalOpen(false)}
-        currentUser={currentUser}
-        onUserUpdate={(user) => setCurrentUser(user)}
-        onReorder={handleReorder}
-      />
 
       {/* Contact & Custom Printing Inquiry Modal */}
       <ContactModal
