@@ -224,7 +224,8 @@
 }
 
 .hero-copy h1 .highlight-text {
-  background: linear-gradient(135deg, var(--color-eco-600), var(--color-brand-500));
+  color: var(--color-eco-600);
+  background: linear-gradient(135deg, var(--color-eco-500), var(--color-eco-700));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
