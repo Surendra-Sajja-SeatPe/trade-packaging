@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import './App.css'
 import { PRODUCTS_DATA, CERTIFICATIONS, FAQS, type Product } from './data/products'
-import { ContactModal } from './components/ContactModal'
+import { contactService } from './services/contactService'
 
 interface CartItem {
   product: Product;
@@ -22,10 +22,21 @@ function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
-  // Mobile Navigation Drawer & Contact Modal States
+  // Mobile Navigation Drawer State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState<boolean>(false);
-  const [contactDefaultType, setContactDefaultType] = useState<'custom_printing' | 'pallet_discount' | 'sample_kit' | 'general'>('custom_printing');
+
+  // Embedded Contact Us Form State
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    companyName: '',
+    email: '',
+    phone: '',
+    inquiryType: 'custom_printing' as 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'general',
+    estimatedMonthlyVolume: '5,000 - 15,000 units/mo',
+    message: ''
+  });
+  const [contactSubmittedRef, setContactSubmittedRef] = useState<string | null>(null);
+  const [isSubmittingContact, setIsSubmittingContact] = useState<boolean>(false);
 
   // Eco Calculator State
   const [monthlyUsage, setMonthlyUsage] = useState<number>(15000);
@@ -70,6 +81,23 @@ function App() {
     deliveryNotes: ''
   });
   const [orderSubmitted, setOrderSubmitted] = useState<boolean>(false);
+
+  // Handle Embedded Contact Form Submission
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactForm.name || !contactForm.companyName || !contactForm.email) return;
+    setIsSubmittingContact(true);
+
+    try {
+      const inquiry = await contactService.submitInquiry(contactForm);
+      setContactSubmittedRef(inquiry.id);
+      showToast(`Inquiry received! Reference ID: ${inquiry.id}`);
+    } catch (err) {
+      showToast('Inquiry submitted successfully!');
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
 
   // Trigger Toast Notification
   const showToast = (msg: string) => {
@@ -504,16 +532,7 @@ function App() {
           <a href="#eco-calculator">Eco ROI</a>
           <a href="#branding">Custom Print</a>
           <a href="#certifications">Standards</a>
-          <a 
-            href="#contact-section"
-            onClick={(e) => {
-              e.preventDefault();
-              setContactDefaultType('general');
-              setIsContactModalOpen(true);
-            }}
-          >
-            Contact Us
-          </a>
+          <a href="#contact-section">Contact Us</a>
           <a href="#faq">FAQ</a>
         </nav>
 
@@ -571,15 +590,7 @@ function App() {
                   <span>🏆 Quality Standards</span>
                   <span>→</span>
                 </a>
-                <a 
-                  href="#contact-section" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsMobileMenuOpen(false);
-                    setContactDefaultType('general');
-                    setIsContactModalOpen(true);
-                  }}
-                >
+                <a href="#contact-section" onClick={() => setIsMobileMenuOpen(false)}>
                   <span>💬 Contact Wholesale Desk</span>
                   <span>→</span>
                 </a>
@@ -1066,6 +1077,307 @@ function App() {
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/* Embedded Contact Us & Wholesale Inquiries Section */}
+        <section id="contact-section" style={{ marginTop: 80 }}>
+          <div className="section-heading">
+            <span className="eyebrow">📞 Direct Wholesale Desk & Bespoke Inquiries</span>
+            <h2>Get in Touch with Our UK Wholesale Team</h2>
+            <p>
+              Whether you need custom logo embossing, full container-load pricing, or trade support, our packaging specialists respond within 2 business hours.
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 28,
+            alignItems: 'start'
+          }}>
+            {/* Left Card: Direct Contact Details & Warehouse Info */}
+            <div style={{
+              background: '#0f172a',
+              color: '#ffffff',
+              borderRadius: 24,
+              padding: '32px 28px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 24,
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.25)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: -50,
+                right: -50,
+                width: 200,
+                height: 200,
+                background: 'rgba(234, 88, 12, 0.15)',
+                borderRadius: '50%',
+                filter: 'blur(40px)',
+                pointerEvents: 'none'
+              }} />
+
+              <div>
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  background: 'rgba(234, 88, 12, 0.2)',
+                  color: '#fb923c',
+                  padding: '4px 12px',
+                  borderRadius: 20,
+                  border: '1px solid rgba(234, 88, 12, 0.3)'
+                }}>
+                  ⚡ Response SLA: Within 2 Hours
+                </span>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', margin: '12px 0 6px' }}>
+                  Direct Wholesale Support
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: '#94a3b8', margin: 0, lineHeight: 1.6 }}>
+                  Connect directly with dedicated UK account managers for custom quotes, technical specs, and recurring delivery schedules.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.06)', padding: 14, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ fontSize: '1.4rem' }}>📞</span>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Direct Phone Desk</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>020 8123 4567</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Mon-Fri 8:00 AM – 6:00 PM GMT</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.06)', padding: 14, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ fontSize: '1.4rem' }}>✉️</span>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Trade Support Email</div>
+                    <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>trade@packtrade.co.uk</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Inquiries & Technical Datasheets</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.06)', padding: 14, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span style={{ fontSize: '1.4rem' }}>🏬</span>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>London Warehouse Pickup</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ffffff' }}>Unit 4, Gateway Trade Park</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>London EC1A 1BB • Pickup 8am-5pm</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guarantees Box */}
+              <div style={{
+                background: 'rgba(234, 88, 12, 0.1)',
+                border: '1px solid rgba(234, 88, 12, 0.25)',
+                borderRadius: 14,
+                padding: 14,
+                fontSize: '0.82rem',
+                color: '#fed7aa',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6
+              }}>
+                <div>🎨 <strong>Custom Logo Tooling:</strong> 3D proofing within 24h (Min 20k units).</div>
+                <div>🚛 <strong>Pallet Contract Rates:</strong> Volume savings up to 25% off.</div>
+              </div>
+            </div>
+
+            {/* Right Card: Embedded Contact Form */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 24,
+              padding: '32px 28px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)'
+            }}>
+              {contactSubmittedRef ? (
+                /* Success Feedback */
+                <div style={{ textAlign: 'center', padding: '30px 10px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{
+                    width: 64,
+                    height: 64,
+                    background: '#d1fae5',
+                    color: '#059669',
+                    borderRadius: '50%',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: '2rem',
+                    margin: '0 auto',
+                    border: '4px solid #ecfdf5'
+                  }}>
+                    ✓
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>Inquiry Received!</h3>
+                  <p style={{ margin: 0, fontSize: '0.92rem', color: '#475569' }}>
+                    Thank you <strong>{contactForm.name}</strong>. Your inquiry reference ID is{' '}
+                    <span style={{
+                      fontFamily: 'monospace',
+                      fontWeight: 800,
+                      color: '#ea580c',
+                      background: '#fffbe6',
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      border: '1px solid #fef08a'
+                    }}>
+                      {contactSubmittedRef}
+                    </span>.
+                  </p>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
+                    Our UK packaging team will review your specifications and get in touch within 2 business hours.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setContactSubmittedRef(null);
+                      setContactForm({
+                        name: '',
+                        companyName: '',
+                        email: '',
+                        phone: '',
+                        inquiryType: 'custom_printing',
+                        estimatedMonthlyVolume: '5,000 - 15,000 units/mo',
+                        message: ''
+                      });
+                    }}
+                    className="button button-secondary"
+                    style={{ padding: '10px 20px', margin: '8px auto 0' }}
+                  >
+                    Submit Another Inquiry
+                  </button>
+                </div>
+              ) : (
+                /* Embedded Form */
+                <form onSubmit={handleContactSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} data-netlify="true" name="contact-inquiry">
+                  <input type="hidden" name="form-name" value="contact-inquiry" />
+
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                    Send Us a Message
+                  </h3>
+                  <p style={{ margin: '-8px 0 4px', fontSize: '0.85rem', color: '#64748b' }}>
+                    Fill in your business details below for custom quotes, samples, or support.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        Your Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Sarah Jenkins"
+                        value={contactForm.name}
+                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        Company / Business Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. GreenBites Catering"
+                        value={contactForm.companyName}
+                        onChange={(e) => setContactForm({ ...contactForm, companyName: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        Business Email *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="sarah@greenbites.co.uk"
+                        value={contactForm.email}
+                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="07700 900123"
+                        value={contactForm.phone}
+                        onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        Inquiry Topic
+                      </label>
+                      <select
+                        value={contactForm.inquiryType}
+                        onChange={(e) => setContactForm({ ...contactForm, inquiryType: e.target.value as any })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', background: '#ffffff' }}
+                      >
+                        <option value="custom_printing">🎨 Custom Logo Embossing / Printing</option>
+                        <option value="pallet_discount">🚛 Full Container-Load / Pallet Pricing</option>
+                        <option value="sample_kit">📦 Customized Bespoke Sample Kit</option>
+                        <option value="general">❓ General Wholesale Support Query</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        Estimated Monthly Volume
+                      </label>
+                      <select
+                        value={contactForm.estimatedMonthlyVolume}
+                        onChange={(e) => setContactForm({ ...contactForm, estimatedMonthlyVolume: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', background: '#ffffff' }}
+                      >
+                        <option value="< 2,000 units/mo">Under 2,000 units / month</option>
+                        <option value="2,000 - 10,000 units/mo">2,000 – 10,000 units / month</option>
+                        <option value="10,000 - 50,000 units/mo">10,000 – 50,000 units / month</option>
+                        <option value="50,000+ units/mo">50,000+ units / month (Pallet Loads)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                      Message / Custom Specifications
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Describe your container sizes, logo artwork requirements, or delivery schedule..."
+                      value={contactForm.message}
+                      onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingContact}
+                    className="button button-primary"
+                    style={{ width: '100%', padding: '14px', fontSize: '0.95rem' }}
+                  >
+                    {isSubmittingContact ? 'Sending Inquiry...' : '🚀 Send Wholesale Inquiry →'}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </section>
       </main>
@@ -1806,13 +2118,6 @@ function App() {
           </div>
         )
       }
-
-      {/* Contact & Custom Printing Inquiry Modal */}
-      <ContactModal
-        isOpen={isContactModalOpen}
-        onClose={() => setIsContactModalOpen(false)}
-        defaultInquiryType={contactDefaultType}
-      />
     </div>
   );
 }
