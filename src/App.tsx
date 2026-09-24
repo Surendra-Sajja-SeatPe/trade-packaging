@@ -45,6 +45,9 @@ function App() {
   const [brandingType, setBrandingType] = useState<string>('Burger Box');
   const [brandingText, setBrandingText] = useState<string>('URBAN BITES');
   const [brandingColor, setBrandingColor] = useState<string>('#059669');
+  const [brandingMethod, setBrandingMethod] = useState<'soy-ink' | 'embossing' | 'sleeve'>('soy-ink');
+  const [brandingPlacement, setBrandingPlacement] = useState<'center' | 'corner' | 'latch'>('center');
+  const [brandingLogoImage, setBrandingLogoImage] = useState<string | null>(null);
 
   // Sample Request Form State
   const [sampleForm, setSampleForm] = useState({
@@ -623,9 +626,6 @@ function App() {
         {/* Hero Section */}
         <section className="hero-section">
           <div className="hero-copy">
-            <span className="eyebrow">
-              🌱 Certified Home Compostable • B2B Wholesale Packaging
-            </span>
             <h1>
               Heavy-Duty <span className="highlight-text">Sugarcane Bagasse</span> Takeaway Packaging
             </h1>
@@ -854,123 +854,349 @@ function App() {
           </div>
         </section>
 
-        {/* Custom Logo Branding Configurator */}
+        {/* Custom Logo Branding Configurator & Proofing Guide */}
         <section id="branding" className="branding-section">
-          <div className="section-heading" style={{ textAlign: 'left', marginBottom: 24 }}>
-            <span className="eyebrow">Custom Printed Packaging</span>
-            <h2>Put Your Restaurant Logo on Compostable Bagasse</h2>
-            <p>Custom soy-ink printing or blind debossing on clamshells, burger boxes, and noodle bowls.</p>
+          <div className="section-heading" style={{ textAlign: 'left', marginBottom: 20 }}>
+            <span className="eyebrow">Custom Printed & Embossed Packaging</span>
+            <h2>Custom Printing Made Simple — Free 24h Digital Proofing</h2>
+            <p>Whether you have vector artwork ready or just a brand name, our in-house design team builds your 3D container proof free of charge before production.</p>
+          </div>
+
+          {/* 3-Step Process Explanation Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+            border: '1px solid #10b981',
+            borderRadius: '16px',
+            padding: '18px 24px',
+            marginBottom: '28px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: '16px',
+            alignItems: 'center'
+          }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>1</div>
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Upload or Describe</strong>
+                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Provide logo artwork (.AI, .PNG, .PDF) or plain text</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>2</div>
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Free 24h 3D Proof</strong>
+                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Our design team emails die-line & 3D container mockups</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>3</div>
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Approve & Dispatch</strong>
+                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Production starts after 100% written client sign-off</span>
+              </div>
+            </div>
           </div>
 
           <div className="branding-grid">
+            {/* Live Interactive Mockup Visualizer */}
             <div className="branding-preview-box">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>
+                  LIVE MOCKUP PREVIEW
+                </span>
+                <span style={{ fontSize: '0.72rem', background: '#f1f5f9', padding: '2px 8px', borderRadius: 4, color: '#475569', fontWeight: 700 }}>
+                  {brandingMethod === 'soy-ink' ? '💧 Water Soy Ink' : brandingMethod === 'embossing' ? '⚡ 3D Blind Embossing' : '🏷️ Printed Band'}
+                </span>
+              </div>
+
               <div
                 className="mockup-container"
                 style={{
                   backgroundImage: `url(${brandingType === 'Burger Box'
                     ? '/images/burger_box_5x5.png'
                     : '/images/clamshell_7x5.png'
-                    })`
+                    })`,
+                  justifyContent: brandingPlacement === 'corner' ? 'flex-start' : brandingPlacement === 'latch' ? 'flex-end' : 'center',
+                  alignItems: brandingPlacement === 'latch' ? 'flex-end' : brandingPlacement === 'corner' ? 'flex-start' : 'center',
+                  padding: 16
                 }}
               >
-                <div
-                  className="mockup-logo-overlay"
-                  style={{ color: brandingColor, borderColor: brandingColor }}
-                >
-                  {brandingText || 'YOUR LOGO'}
-                </div>
+                {brandingLogoImage ? (
+                  <div
+                    style={{
+                      maxHeight: 90,
+                      maxWidth: 160,
+                      padding: 8,
+                      borderRadius: 8,
+                      background: brandingMethod === 'embossing' ? 'rgba(230, 225, 215, 0.7)' : 'rgba(255, 255, 255, 0.85)',
+                      boxShadow: brandingMethod === 'embossing' ? 'inset 2px 2px 4px rgba(0,0,0,0.3), 1px 1px 2px rgba(255,255,255,0.8)' : '0 4px 12px rgba(0,0,0,0.1)',
+                      border: brandingMethod === 'embossing' ? '1px inset rgba(0,0,0,0.2)' : `2px solid ${brandingColor}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      filter: brandingMethod === 'embossing' ? 'contrast(0.7) opacity(0.85)' : 'none'
+                    }}
+                  >
+                    <img src={brandingLogoImage} alt="Custom Logo Preview" style={{ maxHeight: 70, maxWidth: 140, objectFit: 'contain' }} />
+                  </div>
+                ) : (
+                  <div
+                    className="mockup-logo-overlay"
+                    style={{
+                      color: brandingMethod === 'embossing' ? '#78350f' : brandingColor,
+                      borderColor: brandingMethod === 'embossing' ? '#a16207' : brandingColor,
+                      background: brandingMethod === 'embossing' ? 'rgba(245, 240, 230, 0.75)' : 'rgba(255, 255, 255, 0.9)',
+                      boxShadow: brandingMethod === 'embossing' ? 'inset 2px 2px 4px rgba(0,0,0,0.25)' : '0 4px 15px rgba(0,0,0,0.1)',
+                      textShadow: brandingMethod === 'embossing' ? '1px 1px 0px rgba(255,255,255,0.8)' : 'none'
+                    }}
+                  >
+                    {brandingText || 'YOUR LOGO'}
+                  </div>
+                )}
               </div>
-              <p style={{ marginTop: 16, fontSize: '0.85rem', color: '#64748b' }}>
-                Simulated soy-ink branding preview on eco-friendly unbleached bagasse fiber
+
+              <p style={{ marginTop: 14, fontSize: '0.82rem', color: '#64748b', lineHeight: 1.4 }}>
+                {brandingLogoImage ? '✔ Custom artwork loaded.' : 'Type your brand name or upload a logo file to see your design on unbleached sugarcane bagasse fiber.'}
               </p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Configurator & Upload Options */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Option A: Upload Artwork or Type Brand Text */}
               <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
-                  1. Select Packaging Box Style
+                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.9rem' }}>
+                  1. Brand Artwork / Logo Source
                 </label>
-                <select
-                  value={brandingType}
-                  onChange={(e) => setBrandingType(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid #cbd5e1',
-                    fontFamily: 'inherit'
-                  }}
-                >
-                  <option value="Burger Box">Gourmet Burger Clamshell</option>
-                  <option value="Square Clamshell">750ml Square Clamshell Box</option>
-                  <option value="Rectangular Pack">900ml 2-Compartment Meal Box</option>
-                </select>
-              </div>
 
-              <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
-                  2. Restaurant Name or Branding Text
-                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <label style={{
+                    border: !brandingLogoImage ? '2px solid #059669' : '1px solid #cbd5e1',
+                    background: !brandingLogoImage ? '#ecfdf5' : '#f8fafc',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <input
+                      type="radio"
+                      name="logoSource"
+                      checked={!brandingLogoImage}
+                      onChange={() => setBrandingLogoImage(null)}
+                    />
+                    <span>Type Brand Name</span>
+                  </label>
+
+                  <label style={{
+                    border: brandingLogoImage ? '2px solid #059669' : '1px solid #cbd5e1',
+                    background: brandingLogoImage ? '#ecfdf5' : '#f8fafc',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <input
+                      type="radio"
+                      name="logoSource"
+                      checked={!!brandingLogoImage}
+                      onChange={() => {
+                        const fileInput = document.getElementById('logo-upload-input');
+                        if (fileInput) fileInput.click();
+                      }}
+                    />
+                    <span>Upload Logo File</span>
+                  </label>
+                </div>
+
+                {!brandingLogoImage ? (
+                  <input
+                    type="text"
+                    value={brandingText}
+                    onChange={(e) => setBrandingText(e.target.value)}
+                    maxLength={25}
+                    placeholder="e.g. URBAN BITES / THE GREEN DELI"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f1f5f9', padding: '8px 12px', borderRadius: 8 }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', flex: 1 }}>✔ Logo Image Uploaded</span>
+                    <button
+                      type="button"
+                      onClick={() => setBrandingLogoImage(null)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
                 <input
-                  type="text"
-                  value={brandingText}
-                  onChange={(e) => setBrandingText(e.target.value)}
-                  maxLength={25}
-                  placeholder="Enter your brand text..."
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid #cbd5e1',
-                    fontFamily: 'inherit'
+                  id="logo-upload-input"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        if (evt.target?.result) {
+                          setBrandingLogoImage(evt.target.result as string);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
                   }}
                 />
               </div>
 
+              {/* Option B: Print Technique Selection */}
               <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
-                  3. Water-Based Soy Ink Color
+                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.9rem' }}>
+                  2. Select Printing Technique
                 </label>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                   {[
-                    { name: 'Eco Emerald', hex: '#059669' },
-                    { name: 'Sugarcane Amber', hex: '#d97706' },
-                    { name: 'Deep Charcoal', hex: '#0f172a' },
-                    { name: 'Kraft Brown', hex: '#78350f' }
-                  ].map((color) => (
+                    { id: 'soy-ink', label: '💧 Soy Ink', desc: '1-2 Color Print' },
+                    { id: 'embossing', label: '⚡ Blind Emboss', desc: '3D Texture (Ink Free)' },
+                    { id: 'sleeve', label: '🏷️ Kraft Sleeve', desc: 'Printed Band Wrap' }
+                  ].map((m) => (
                     <button
-                      key={color.hex}
+                      key={m.id}
                       type="button"
-                      onClick={() => setBrandingColor(color.hex)}
+                      onClick={() => setBrandingMethod(m.id as any)}
                       style={{
-                        padding: '8px 14px',
-                        borderRadius: '999px',
-                        border: brandingColor === color.hex ? '2px solid #000' : '1px solid #cbd5e1',
-                        background: color.hex,
-                        color: '#fff',
+                        padding: '8px 6px',
+                        borderRadius: '8px',
+                        border: brandingMethod === m.id ? '2px solid #059669' : '1px solid #cbd5e1',
+                        background: brandingMethod === m.id ? '#ecfdf5' : '#ffffff',
+                        color: brandingMethod === m.id ? '#047857' : '#334155',
                         fontWeight: 700,
                         fontSize: '0.78rem',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        textAlign: 'center'
                       }}
                     >
-                      {color.name}
+                      <div style={{ fontWeight: 800 }}>{m.label}</div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 500, color: '#64748b' }}>{m.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div style={{ marginTop: 10 }}>
+              {/* Option C: Packaging Model & Ink Color */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.85rem' }}>
+                    3. Packaging Container
+                  </label>
+                  <select
+                    value={brandingType}
+                    onChange={(e) => setBrandingType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontFamily: 'inherit',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    <option value="Burger Box">Burger Clamshell</option>
+                    <option value="Square Clamshell">Square Meal Box</option>
+                    <option value="Rectangular Pack">2-Compartment Pack</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.85rem' }}>
+                    4. Placement
+                  </label>
+                  <select
+                    value={brandingPlacement}
+                    onChange={(e) => setBrandingPlacement(e.target.value as any)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontFamily: 'inherit',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    <option value="center">Center Top Lid</option>
+                    <option value="corner">Top-Left Corner</option>
+                    <option value="latch">Front Latch / Flap</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Ink Color Selector (If Soy Ink Selected) */}
+              {brandingMethod === 'soy-ink' && (
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.85rem' }}>
+                    5. Soy-Ink Color Palette
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { name: 'Eco Emerald', hex: '#059669' },
+                      { name: 'Sugarcane Amber', hex: '#d97706' },
+                      { name: 'Deep Charcoal', hex: '#0f172a' },
+                      { name: 'Kraft Brown', hex: '#78350f' }
+                    ].map((color) => (
+                      <button
+                        key={color.hex}
+                        type="button"
+                        onClick={() => setBrandingColor(color.hex)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '999px',
+                          border: brandingColor === color.hex ? '2px solid #000' : '1px solid #cbd5e1',
+                          background: color.hex,
+                          color: '#fff',
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {color.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA Action */}
+              <div style={{ marginTop: 6 }}>
                 <button
                   type="button"
                   className="button button-eco"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', padding: '14px', fontSize: '0.95rem' }}
                   onClick={() => {
                     setIsSampleModalOpen(true);
-                    showToast('Custom branding configuration saved for sample request!');
+                    showToast('Custom branding configuration attached to sample request!');
                   }}
                 >
-                  Request Branded Printed Sample
+                  🎁 Request Physical Sample & Free 3D Proof
                 </button>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', textAlign: 'center', marginTop: 6 }}>
+                  ⚡ Zero commitment required • 24-hour response from our UK artwork desk
+                </div>
               </div>
             </div>
           </div>
