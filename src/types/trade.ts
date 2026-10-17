@@ -44,7 +44,7 @@ export interface ContactInquiry {
   companyName: string;
   email: string;
   phone: string;
-  inquiryType: 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'general';
+  inquiryType: 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'distributor_account' | 'general';
   estimatedMonthlyVolume: string;
   message: string;
   createdAt: string;

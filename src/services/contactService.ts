@@ -1,5 +1,4 @@
 import type { ContactInquiry } from '../types/trade';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 const STORAGE_KEY_INQUIRIES = 'honeygreen_contact_inquiries';
 
@@ -9,7 +8,7 @@ export const contactService = {
     companyName: string;
     email: string;
     phone: string;
-    inquiryType: 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'general';
+    inquiryType: 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'distributor_account' | 'general';
     estimatedMonthlyVolume: string;
     message: string;
   }): Promise<ContactInquiry> {
@@ -20,7 +19,7 @@ export const contactService = {
       status: 'Pending'
     };
 
-    // Save to local storage for instant fallback demo
+    // Save to local storage for instant browser demo / record persistence
     const existingRaw = localStorage.getItem(STORAGE_KEY_INQUIRIES);
     let inquiries: ContactInquiry[] = [];
     if (existingRaw) {
@@ -33,25 +32,34 @@ export const contactService = {
     inquiries.unshift(inquiry);
     localStorage.setItem(STORAGE_KEY_INQUIRIES, JSON.stringify(inquiries));
 
-    // Save to Supabase database if configured
-    if (isSupabaseConfigured && supabase) {
+    // Optional: If CRM / Webhook URL (e.g. Zoho, HubSpot, Web3Forms) is set in env
+    const webhookUrl = import.meta.env.VITE_CONTACT_WEBHOOK_URL;
+    if (webhookUrl) {
       try {
-        await supabase.from('contact_inquiries').insert([{
-          id: inquiry.id,
-          name: inquiry.name,
-          company_name: inquiry.companyName,
-          email: inquiry.email,
-          phone: inquiry.phone,
-          inquiry_type: inquiry.inquiryType,
-          estimated_monthly_volume: inquiry.estimatedMonthlyVolume,
-          message: inquiry.message,
-          status: inquiry.status
-        }]);
-      } catch (e) {
-        console.warn('Supabase insert skipped or failed:', e);
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(inquiry)
+        });
+      } catch (err) {
+        console.warn('Webhook POST failed:', err);
       }
     }
 
     return inquiry;
+  },
+
+  getStoredInquiries(): ContactInquiry[] {
+    const existingRaw = localStorage.getItem(STORAGE_KEY_INQUIRIES);
+    if (!existingRaw) return [];
+    try {
+      return JSON.parse(existingRaw);
+    } catch {
+      return [];
+    }
+  },
+
+  clearStoredInquiries(): void {
+    localStorage.removeItem(STORAGE_KEY_INQUIRIES);
   }
 };
