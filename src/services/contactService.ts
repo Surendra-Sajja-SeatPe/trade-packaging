@@ -8,7 +8,8 @@ export const contactService = {
     companyName: string;
     email: string;
     phone: string;
-    inquiryType: 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'distributor_account' | 'general';
+    inquiryType: ContactInquiry['inquiryType'];
+    customPrintMethod?: ContactInquiry['customPrintMethod'];
     estimatedMonthlyVolume: string;
     message: string;
   }): Promise<ContactInquiry> {

@@ -5,6 +5,7 @@ export type BusinessType = 'restaurant' | 'caterer' | 'takeaway' | 'dark_kitchen
 export interface CartItem {
   product: Product;
   cartons: number;
+  selectedSize?: string;
 }
 
 export interface TradeUser {
@@ -38,13 +39,16 @@ export interface TradeOrder {
   referenceCode: string;
 }
 
+export type CustomPrintMethod = 'soy_ink' | 'embossing' | 'kraft_sleeves' | 'other_advice';
+
 export interface ContactInquiry {
   id: string;
   name: string;
   companyName: string;
   email: string;
   phone: string;
-  inquiryType: 'custom_printing' | 'pallet_discount' | 'sample_kit' | 'distributor_account' | 'general';
+  inquiryType: 'general' | 'custom_printing' | 'pallet_discount' | 'distributor_account' | 'sample_kit';
+  customPrintMethod?: CustomPrintMethod;
   estimatedMonthlyVolume: string;
   message: string;
   createdAt: string;

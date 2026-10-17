@@ -1,10 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import type { ContactInquiry } from '../types/trade';
+import type { ContactInquiry, CustomPrintMethod } from '../types/trade';
 import { contactService } from '../services/contactService';
 
 interface ContactSectionProps {
   onToast?: (message: string) => void;
+  selectedInquiryType?: ContactInquiry['inquiryType'];
+  selectedCustomPrintMethod?: CustomPrintMethod | '';
 }
+
+export const INQUIRY_TYPE_LABELS: Record<ContactInquiry['inquiryType'], string> = {
+  general: 'General Wholesale Inquiry',
+  custom_printing: 'Custom Logo & Print Branding',
+  pallet_discount: 'Pallet & Bulk Container Pricing',
+  distributor_account: 'Distributor & Reseller Account',
+  sample_kit: 'Free Sample Pack Request'
+};
+
+export const CUSTOM_PRINT_METHOD_LABELS: Record<CustomPrintMethod, string> = {
+  soy_ink: 'Food-Safe Soy & Water Inks',
+  embossing: '3D Blind Embossing',
+  kraft_sleeves: 'Printed Kraft Sleeves & Belly Bands',
+  other_advice: 'Other / General Custom Branding'
+};
 
 const initialForm = {
   name: '',
@@ -12,11 +29,16 @@ const initialForm = {
   email: '',
   phone: '',
   inquiryType: 'general' as ContactInquiry['inquiryType'],
+  customPrintMethod: '' as CustomPrintMethod | '',
   estimatedMonthlyVolume: '5,000 - 25,000 units',
   message: ''
 };
 
-export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
+export const ContactSection: React.FC<ContactSectionProps> = ({
+  onToast,
+  selectedInquiryType,
+  selectedCustomPrintMethod
+}) => {
   const [formData, setFormData] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedInquiry, setSubmittedInquiry] = useState<ContactInquiry | null>(null);
@@ -27,6 +49,18 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
     setRecentInquiries(contactService.getStoredInquiries());
   }, [submittedInquiry]);
 
+  useEffect(() => {
+    if (selectedInquiryType) {
+      setFormData((prev) => ({ ...prev, inquiryType: selectedInquiryType }));
+    }
+  }, [selectedInquiryType]);
+
+  useEffect(() => {
+    if (selectedCustomPrintMethod !== undefined) {
+      setFormData((prev) => ({ ...prev, customPrintMethod: selectedCustomPrintMethod }));
+    }
+  }, [selectedCustomPrintMethod]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.companyName) {
@@ -34,9 +68,24 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
       return;
     }
 
+    if (formData.inquiryType === 'custom_printing' && !formData.customPrintMethod) {
+      onToast?.('Please select a custom print technique option.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const result = await contactService.submitInquiry(formData);
+      const payload = {
+        name: formData.name,
+        companyName: formData.companyName,
+        email: formData.email,
+        phone: formData.phone,
+        inquiryType: formData.inquiryType,
+        customPrintMethod: formData.inquiryType === 'custom_printing' && formData.customPrintMethod ? (formData.customPrintMethod as CustomPrintMethod) : undefined,
+        estimatedMonthlyVolume: formData.estimatedMonthlyVolume,
+        message: formData.message
+      };
+      const result = await contactService.submitInquiry(payload);
       setSubmittedInquiry(result);
       onToast?.(`Inquiry ${result.id} submitted!`);
     } catch (err) {
@@ -132,8 +181,14 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
                 </div>
                 <div className="detail-row">
                   <span>Inquiry Type:</span>
-                  <strong>{submittedInquiry.inquiryType.replace('_', ' ')}</strong>
+                  <strong>{INQUIRY_TYPE_LABELS[submittedInquiry.inquiryType] || submittedInquiry.inquiryType}</strong>
                 </div>
+                {submittedInquiry.customPrintMethod && (
+                  <div className="detail-row">
+                    <span>Print Technique:</span>
+                    <strong>{CUSTOM_PRINT_METHOD_LABELS[submittedInquiry.customPrintMethod]}</strong>
+                  </div>
+                )}
               </div>
 
               <p className="success-next-steps">
@@ -215,9 +270,9 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
                     }
                   >
                     <option value="general">General Wholesale Inquiry</option>
-                    <option value="distributor_account">Distributor &amp; Reseller Account</option>
-                    <option value="custom_printing">Custom Logo &amp; Branding</option>
+                    <option value="custom_printing">Custom Logo &amp; Print Branding</option>
                     <option value="pallet_discount">Pallet &amp; Bulk Container Pricing</option>
+                    <option value="distributor_account">Distributor &amp; Reseller Account</option>
                     <option value="sample_kit">Free Sample Pack Request</option>
                   </select>
                 </div>
@@ -238,6 +293,32 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
                   </select>
                 </div>
               </div>
+
+              {/* Cascading Secondary Dropdown: Revealed when Custom Logo & Print Branding is chosen */}
+              {formData.inquiryType === 'custom_printing' && (
+                <div className="form-group">
+                  <label htmlFor="contact-custom-print-method">
+                    Custom Print Technique / Option *
+                  </label>
+                  <select
+                    id="contact-custom-print-method"
+                    required
+                    value={formData.customPrintMethod}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        customPrintMethod: e.target.value as CustomPrintMethod | ''
+                      })
+                    }
+                  >
+                    <option value="" disabled>-- Select a print option --</option>
+                    <option value="soy_ink">Food-Safe Soy &amp; Water Inks</option>
+                    <option value="embossing">3D Blind Embossing</option>
+                    <option value="kraft_sleeves">Printed Kraft Sleeves &amp; Belly Bands</option>
+                    <option value="other_advice">Other / General Custom Branding</option>
+                  </select>
+                </div>
+              )}
 
               <div className="form-group">
                 <label htmlFor="contact-message">Message *</label>
@@ -303,7 +384,14 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onToast }) => {
                             <strong>{inq.name}</strong>
                             <div className="table-sub">{inq.companyName} ({inq.email})</div>
                           </td>
-                          <td><span className="inquiry-type-chip">{inq.inquiryType}</span></td>
+                          <td>
+                            <span className="inquiry-type-chip">{INQUIRY_TYPE_LABELS[inq.inquiryType] || inq.inquiryType}</span>
+                            {inq.customPrintMethod && (
+                              <div style={{ fontSize: '0.74rem', color: '#047857', marginTop: 4, fontWeight: 600 }}>
+                                ↳ {CUSTOM_PRINT_METHOD_LABELS[inq.customPrintMethod]}
+                              </div>
+                            )}
+                          </td>
                           <td><span className="status-badge-pending">{inq.status}</span></td>
                         </tr>
                       ))}

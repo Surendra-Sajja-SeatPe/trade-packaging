@@ -18,6 +18,15 @@ export interface PriceTier {
   pricePerUnit: number;
 }
 
+export interface ProductSizeOption {
+  code: string;
+  name: string;
+  boxSize: string;
+  flatSize: string;
+  basePrice?: number;
+  priceTiers?: PriceTier[];
+}
+
 export interface Product {
   id: string;
   modelCode: string;
@@ -32,6 +41,8 @@ export interface Product {
   specs: ProductSpec;
   isBestSeller?: boolean;
   inStock: boolean;
+  highlights?: string[];
+  sizeOptions?: ProductSizeOption[];
 }
 
 export const PRODUCTS_DATA: Product[] = [
@@ -411,34 +422,90 @@ export const PRODUCTS_DATA: Product[] = [
     }
   },
   {
-    id: 'custom-printed-dinearth-clamshell',
-    modelCode: 'DA-CUSTOM',
-    name: 'Custom Printed / Embossed Bagasse Box',
+    id: 'custom-printed-kraft-sleeves',
+    modelCode: 'DA-SLEEVE',
+    name: 'Custom Printed Kraft Sleeves & Belly Bands',
     category: 'Custom',
-    type: 'Private Label Packaging',
-    badge: 'Custom Print',
-    image: '/images/burger_box_5x5.png',
-    shortDesc: 'Custom soy-ink logo printing or factory debossing directly on clamshell lids for restaurant branding.',
-    basePrice: 0.58,
+    type: 'Wraparound Packaging Band',
+    badge: 'Full-Colour CMYK',
+    image: '/images/kraft_box_sleeve.png',
+    shortDesc: 'Full-colour CMYK high-resolution wraparound kraft paper belly bands custom sized for clamshells and meal boxes.',
+    basePrice: 0.18,
     priceTiers: [
-      { minCartons: 5, pricePerUnit: 0.58 },
-      { minCartons: 20, pricePerUnit: 0.48 },
-      { minCartons: 50, pricePerUnit: 0.39 }
+      { minCartons: 1, pricePerUnit: 0.18 },
+      { minCartons: 5, pricePerUnit: 0.13 },
+      { minCartons: 20, pricePerUnit: 0.09 }
     ],
     inStock: true,
+    highlights: [
+      'Full-colour photographic print, barcodes & dietary tables',
+      'Tamper-evident wrap option for delivery assurance',
+      'Flexible for seasonal menus and multi-variant packaging',
+      'Lower initial tooling investment with high visual impact'
+    ],
+    sizeOptions: [
+      {
+        code: 'sleeve-burger',
+        name: 'Burger Box — 6" × 6" (152 × 152 mm)',
+        boxSize: '152 × 152 × 80 mm',
+        flatSize: '460 × 65 mm',
+        basePrice: 0.18,
+        priceTiers: [
+          { minCartons: 1, pricePerUnit: 0.18 },
+          { minCartons: 5, pricePerUnit: 0.13 },
+          { minCartons: 20, pricePerUnit: 0.09 }
+        ]
+      },
+      {
+        code: 'sleeve-std-meal',
+        name: 'Standard Meal Box — 7" × 5" (185 × 140 mm)',
+        boxSize: '185 × 140 × 65 mm',
+        flatSize: '540 × 75 mm',
+        basePrice: 0.22,
+        priceTiers: [
+          { minCartons: 1, pricePerUnit: 0.22 },
+          { minCartons: 5, pricePerUnit: 0.16 },
+          { minCartons: 20, pricePerUnit: 0.11 }
+        ]
+      },
+      {
+        code: 'sleeve-large-meal',
+        name: 'Large Meal Box — 9" × 9" (235 × 235 mm)',
+        boxSize: '235 × 235 × 75 mm',
+        flatSize: '640 × 85 mm',
+        basePrice: 0.26,
+        priceTiers: [
+          { minCartons: 1, pricePerUnit: 0.26 },
+          { minCartons: 5, pricePerUnit: 0.19 },
+          { minCartons: 20, pricePerUnit: 0.14 }
+        ]
+      },
+      {
+        code: 'sleeve-custom',
+        name: 'Custom Dimensions (Bespoke Tray / Bowl)',
+        boxSize: 'Cut to your specific container size',
+        flatSize: 'Custom die-line cut',
+        basePrice: 0.24,
+        priceTiers: [
+          { minCartons: 1, pricePerUnit: 0.24 },
+          { minCartons: 5, pricePerUnit: 0.18 },
+          { minCartons: 20, pricePerUnit: 0.13 }
+        ]
+      }
+    ],
     specs: {
-      modelCode: 'DA-CUSTOM',
-      dimensions: 'Custom Sizes (DA30, DA32, DA33, DA29)',
-      capacity: '500ml / 750ml / 1000ml',
-      material: 'Bagasse Pulp + Water-Based Soy Ink',
-      packSize: 500,
-      cartonWeightKg: 9.0,
-      leadTime: '15-20 Working Days',
-      tempRange: '-20°C to 120°C',
+      modelCode: 'DA-SLEEVE',
+      dimensions: 'Pre-Scored to 6×6", 7×5", 9×9" or Custom Size',
+      capacity: 'Fits 6×6", 7×5", 9×9" Containers & Bespoke Trays',
+      material: '250gsm Recycled Kraft / Coated Food-Grade Board',
+      packSize: 1000,
+      cartonWeightKg: 4.5,
+      leadTime: '5-7 Working Days',
+      tempRange: '-20°C to 100°C',
       microwaveSafe: true,
       oilWaterResistant: true,
-      compostTime: '100% Home Compostable Ink',
-      certifications: ['BRCGS Grade A', 'BPI Certified', 'OK Compost HOME', 'FDA Safe']
+      compostTime: '100% Recyclable & Biodegradable',
+      certifications: ['FSC Certified Paper', 'Food Contact Safe', 'ISO 9001']
     }
   }
 ];

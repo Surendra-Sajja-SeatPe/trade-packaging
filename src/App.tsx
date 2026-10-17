@@ -2,10 +2,12 @@ import { useState, useMemo } from 'react'
 import './App.css'
 import { PRODUCTS_DATA, CERTIFICATIONS, FAQS, type Product } from './data/products'
 import { ContactSection } from './components/ContactSection'
+import type { ContactInquiry, CustomPrintMethod } from './types/trade'
 
 interface CartItem {
   product: Product;
   cartons: number;
+  selectedSize?: string;
 }
 
 const CATEGORIES = ['All', 'Clamshells', 'Burger', 'Bio Boxes', 'Compartment', 'Custom'] as const;
@@ -21,21 +23,17 @@ function App() {
   const [isOrderCheckoutModalOpen, setIsOrderCheckoutModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [selectedProductSizes, setSelectedProductSizes] = useState<Record<string, string>>({});
 
   // Mobile Navigation Drawer State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-
   // Eco Calculator State
   const [monthlyUsage, setMonthlyUsage] = useState<number>(15000);
 
-  // Custom Branding Visualizer State
-  const [brandingType, setBrandingType] = useState<string>('Burger Box');
-  const [brandingText, setBrandingText] = useState<string>('URBAN BITES');
-  const [brandingColor, setBrandingColor] = useState<string>('#059669');
-  const [brandingMethod, setBrandingMethod] = useState<'soy-ink' | 'embossing' | 'sleeve'>('soy-ink');
-  const [brandingPlacement, setBrandingPlacement] = useState<'center' | 'corner' | 'latch'>('center');
-  const [brandingLogoImage, setBrandingLogoImage] = useState<string | null>(null);
+  // Contact Inquiry Type Selection State (for linking from custom print section)
+  const [contactInquiryType, setContactInquiryType] = useState<ContactInquiry['inquiryType']>('general');
+  const [contactPrintMethod, setContactPrintMethod] = useState<CustomPrintMethod | ''>('');
 
   // Sample Request Form State
   const [sampleForm, setSampleForm] = useState({
@@ -81,10 +79,35 @@ function App() {
     }, 3500);
   };
 
-  // Helper for tiered price per unit calculation
-  const getUnitPrice = (product: Product, cartons: number) => {
-    let price = product.basePrice;
-    for (const tier of product.priceTiers) {
+  const handleGoToCustomPrintContact = () => {
+    setContactInquiryType('custom_printing');
+    setContactPrintMethod('');
+    const contactSection = document.getElementById('contact-section');
+    if (contactSection) {
+      contactSection.scrollIntoView({ behavior: 'smooth' });
+      const nameInput = document.getElementById('contact-name');
+      if (nameInput) {
+        setTimeout(() => nameInput.focus(), 600);
+      }
+    }
+    showToast('Custom Print inquiry opened below — please select your preferred technique!');
+  };
+
+  // Helper for tiered price per unit calculation (supporting size-specific pricing tiers)
+  const getUnitPrice = (product: Product, cartons: number, selectedSize?: string) => {
+    let tiers = product.priceTiers;
+    let basePrice = product.basePrice;
+
+    if (product.sizeOptions && selectedSize) {
+      const matched = product.sizeOptions.find((s) => s.name === selectedSize || s.code === selectedSize);
+      if (matched?.priceTiers && matched.priceTiers.length > 0) {
+        tiers = matched.priceTiers;
+        basePrice = matched.basePrice ?? tiers[0].pricePerUnit;
+      }
+    }
+
+    let price = basePrice;
+    for (const tier of tiers) {
       if (cartons >= tier.minCartons) {
         price = tier.pricePerUnit;
       }
@@ -93,26 +116,33 @@ function App() {
   };
 
   // Cart Helper functions
-  const handleAddToCart = (product: Product, quantityCartons = 1) => {
+  const handleAddToCart = (product: Product, quantityCartons = 1, selectedSize?: string) => {
+    const sizeToUse = selectedSize || (product.sizeOptions ? selectedProductSizes[product.id] || product.sizeOptions[0].name : undefined);
     setQuoteCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
+      const existing = prev.find(
+        (item) => item.product.id === product.id && item.selectedSize === sizeToUse
+      );
       if (existing) {
         return prev.map((item) =>
-          item.product.id === product.id
+          item.product.id === product.id && item.selectedSize === sizeToUse
             ? { ...item, cartons: item.cartons + quantityCartons }
             : item
         );
       }
-      return [...prev, { product, cartons: quantityCartons }];
+      return [...prev, { product, cartons: quantityCartons, selectedSize: sizeToUse }];
     });
-    showToast(`Added ${quantityCartons} carton(s) of ${product.name} to quote cart`);
+    showToast(
+      sizeToUse
+        ? `Added ${quantityCartons} carton(s) of ${product.name} (${sizeToUse}) to quote cart`
+        : `Added ${quantityCartons} carton(s) of ${product.name} to quote cart`
+    );
   };
 
-  const handleUpdateCartons = (productId: string, delta: number) => {
+  const handleUpdateCartons = (productId: string, delta: number, selectedSize?: string) => {
     setQuoteCart((prev) =>
       prev
         .map((item) => {
-          if (item.product.id === productId) {
+          if (item.product.id === productId && item.selectedSize === selectedSize) {
             const newCartons = item.cartons + delta;
             return newCartons > 0 ? { ...item, cartons: newCartons } : null;
           }
@@ -122,8 +152,10 @@ function App() {
     );
   };
 
-  const handleRemoveFromCart = (productId: string) => {
-    setQuoteCart((prev) => prev.filter((item) => item.product.id !== productId));
+  const handleRemoveFromCart = (productId: string, selectedSize?: string) => {
+    setQuoteCart((prev) =>
+      prev.filter((item) => !(item.product.id === productId && item.selectedSize === selectedSize))
+    );
   };
 
   // Computed Cart Metrics
@@ -134,13 +166,16 @@ function App() {
     let totalStandardPrice = 0;
     let totalWeightKg = 0;
 
-    quoteCart.forEach(({ product, cartons }) => {
+    quoteCart.forEach(({ product, cartons, selectedSize }) => {
       totalCartons += cartons;
       const units = cartons * product.specs.packSize;
       totalUnits += units;
-      const unitPrice = getUnitPrice(product, cartons);
+      const unitPrice = getUnitPrice(product, cartons, selectedSize);
       totalPrice += units * unitPrice;
-      totalStandardPrice += units * product.basePrice;
+      const effectiveBase = (product.sizeOptions && selectedSize)
+        ? (product.sizeOptions.find((s) => s.name === selectedSize || s.code === selectedSize)?.basePrice ?? product.basePrice)
+        : product.basePrice;
+      totalStandardPrice += units * effectiveBase;
       totalWeightKg += cartons * product.specs.cartonWeightKg;
     });
 
@@ -178,13 +213,16 @@ function App() {
     const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const estimateRef = `EST-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const itemsHtml = quoteCart.map(({ product, cartons }) => {
-      const unitPrice = getUnitPrice(product, cartons);
+    const itemsHtml = quoteCart.map(({ product, cartons, selectedSize }) => {
+      const unitPrice = getUnitPrice(product, cartons, selectedSize);
       const lineTotal = cartons * product.specs.packSize * unitPrice;
       return `
         <tr>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;"><strong>${product.specs.modelCode}</strong></td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${product.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
+            ${product.name}
+            ${selectedSize ? `<br><span style="font-size: 11px; color: #64748b; font-weight: 600;">Size: ${selectedSize}</span>` : ''}
+          </td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${cartons} ctn (${cartons * product.specs.packSize} pcs)</td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">£${unitPrice.toFixed(2)}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">£${lineTotal.toFixed(2)}</td>
@@ -306,13 +344,16 @@ function App() {
     const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const quoteRef = `QT-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const itemsHtml = quoteCart.map(({ product, cartons }) => {
-      const unitPrice = getUnitPrice(product, cartons);
+    const itemsHtml = quoteCart.map(({ product, cartons, selectedSize }) => {
+      const unitPrice = getUnitPrice(product, cartons, selectedSize);
       const lineTotal = cartons * product.specs.packSize * unitPrice;
       return `
         <tr>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;"><strong>${product.specs.modelCode}</strong></td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${product.name}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
+            ${product.name}
+            ${selectedSize ? `<br><span style="font-size: 11px; color: #64748b; font-weight: 600;">Size: ${selectedSize}</span>` : ''}
+          </td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${cartons} ctn (${cartons * product.specs.packSize} pcs)</td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">£${unitPrice.toFixed(2)}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">£${lineTotal.toFixed(2)}</td>
@@ -771,66 +812,123 @@ function App() {
           </div>
 
           <div className="product-grid">
-            {filteredProducts.map((product) => (
-              <article key={product.id} className="product-card">
-                <div className="product-image-container">
-                  <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
-                  <span className="product-badge">CODE: {product.modelCode} • {product.badge}</span>
-                </div>
+            {filteredProducts.map((product) => {
+              const activeSelectedSize = selectedProductSizes[product.id] || (product.sizeOptions ? product.sizeOptions[0].name : undefined);
+              const activeSizeOption = product.sizeOptions?.find((opt) => opt.name === activeSelectedSize || opt.code === activeSelectedSize);
+              const activeTiers = (activeSizeOption?.priceTiers && activeSizeOption.priceTiers.length > 0)
+                ? activeSizeOption.priceTiers
+                : product.priceTiers;
 
-                <div className="product-body">
-                  <span className="product-type">{product.type}</span>
-                  <h3 className="product-title">{product.name}</h3>
-                  <p className="product-desc">{product.shortDesc}</p>
+              return (
+                <article key={product.id} className="product-card">
+                  <div className="product-image-container">
+                    <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
+                    <span className="product-badge">
+                      {product.category === 'Custom' ? 'CODE: CUSTOM' : `CODE: ${product.modelCode} • ${product.badge}`}
+                    </span>
+                  </div>
 
-                  <div className="tier-pricing-box">
-                    <div className="tier-title">Wholesale Volume Pricing (per unit)</div>
-                    <div className="tier-grid">
-                      {product.priceTiers.map((tier, idx) => (
-                        <div key={idx} className="tier-item">
-                          <span className="carton-lbl">
-                            {tier.minCartons}+ Cartons
+                  <div className="product-body">
+                    <span className="product-type">{product.type}</span>
+                    <h3 className="product-title">{product.name}</h3>
+                    <p className="product-desc">{product.shortDesc}</p>
+
+                    {product.sizeOptions && (
+                      <div style={{ marginTop: 8, marginBottom: 10, textAlign: 'left' }}>
+                        <label
+                          htmlFor={`size-select-${product.id}`}
+                          style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}
+                        >
+                          <span>📏</span> Container Size Option:
+                        </label>
+                        <select
+                          id={`size-select-${product.id}`}
+                          value={activeSelectedSize}
+                          onChange={(e) => setSelectedProductSizes({ ...selectedProductSizes, [product.id]: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            borderRadius: 6,
+                            border: '1.5px solid #059669',
+                            background: '#f0fdf4',
+                            color: '#0f172a'
+                          }}
+                        >
+                          {product.sizeOptions.map((opt) => (
+                            <option key={opt.code} value={opt.name}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                        {activeSizeOption && (
+                          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 4, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+                            <span>Flat length: <strong style={{ color: '#0f172a' }}>{activeSizeOption.flatSize}</strong></span>
+                            <span>Fits: <strong style={{ color: '#0f172a' }}>{activeSizeOption.boxSize}</strong></span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="tier-pricing-box">
+                      <div className="tier-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Wholesale Volume Pricing (per unit)</span>
+                        {activeSizeOption && (
+                          <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 700 }}>
+                            {activeSizeOption.name.split('—')[0].trim()}
                           </span>
-                          <span className="unit-price">£{tier.pricePerUnit.toFixed(2)}</span>
-                        </div>
-                      ))}
+                        )}
+                      </div>
+                      <div className="tier-grid">
+                        {activeTiers.map((tier, idx) => (
+                          <div key={idx} className="tier-item">
+                            <span className="carton-lbl">
+                              {tier.minCartons}+ Cartons
+                            </span>
+                            <span className="unit-price">£{tier.pricePerUnit.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="spec-pills">
+                      <span className="spec-pill">📦 {product.specs.packSize} pcs/ctn</span>
+                      <span className="spec-pill">📏 {activeSizeOption ? activeSizeOption.flatSize : product.specs.capacity}</span>
+                      <span className="spec-pill">🔥 {product.specs.tempRange}</span>
+                    </div>
+
+                    <div className="card-actions">
+                      <button
+                        type="button"
+                        className="button button-primary small-button"
+                        onClick={() => handleAddToCart(product, 1, activeSelectedSize)}
+                      >
+                        + Add to Quote
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-secondary small-button"
+                        onClick={() => setActiveSpecProduct(product)}
+                      >
+                        Specs & Details
+                      </button>
                     </div>
                   </div>
-
-                  <div className="spec-pills">
-                    <span className="spec-pill">📦 {product.specs.packSize} pcs/ctn</span>
-                    <span className="spec-pill">📏 {product.specs.capacity}</span>
-                    <span className="spec-pill">🔥 {product.specs.tempRange}</span>
-                  </div>
-
-                  <div className="card-actions">
-                    <button
-                      type="button"
-                      className="button button-primary small-button"
-                      onClick={() => handleAddToCart(product, 1)}
-                    >
-                      + Add to Quote
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-secondary small-button"
-                      onClick={() => setActiveSpecProduct(product)}
-                    >
-                      Specs & Details
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </section>
 
         {/* Custom Logo Branding Configurator & Proofing Guide */}
         <section id="branding" className="branding-section">
-          <div className="section-heading" style={{ textAlign: 'left', marginBottom: 20 }}>
-            <span className="eyebrow">Custom Printed & Embossed Packaging</span>
-            <h2>Custom Printing Made Simple — Free 24h Digital Proofing</h2>
-            <p>Whether you have vector artwork ready or just a brand name, our in-house design team builds your 3D container proof free of charge before production.</p>
+          <div className="section-heading">
+            <span className="eyebrow">Bespoke Branding &amp; Custom Packaging</span>
+            <h2>Custom Printed &amp; Branded Packaging Made Simple</h2>
+            <p>
+              Transform natural sugarcane bagasse containers with your bespoke brand identity. Explore our three branding techniques below and enquire for custom trade pricing, MOQs, and digital die-line proofing.
+            </p>
           </div>
 
           {/* 3-Step Process Explanation Banner */}
@@ -846,330 +944,133 @@ function App() {
             alignItems: 'center'
           }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>1</div>
+              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0, boxShadow: '0 2px 6px rgba(5, 150, 105, 0.35)' }}>1</div>
               <div>
-                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Upload or Describe</strong>
-                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Provide logo artwork (.AI, .PNG, .PDF) or plain text</span>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Choose Technique &amp; Enquire</strong>
+                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Select direct print, embossing, or sleeves &amp; share requirements</span>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>2</div>
+              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0, boxShadow: '0 2px 6px rgba(5, 150, 105, 0.35)' }}>2</div>
               <div>
-                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Free 24h 3D Proof</strong>
-                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Our design team emails die-line & 3D container mockups</span>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Tailored Quote &amp; Digital Proof</strong>
+                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Receive volume pricing, artwork feasibility &amp; die-line proofing</span>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>3</div>
+              <div style={{ background: '#059669', color: '#fff', width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0, boxShadow: '0 2px 6px rgba(5, 150, 105, 0.35)' }}>3</div>
               <div>
-                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Approve & Dispatch</strong>
-                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Production starts after 100% written client sign-off</span>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#064e3b' }}>Written Approval &amp; Dispatch</strong>
+                <span style={{ fontSize: '0.78rem', color: '#047857' }}>Production starts after 100% written sign-off with tracked delivery</span>
               </div>
             </div>
           </div>
 
-          <div className="branding-grid">
-            {/* Live Interactive Mockup Visualizer */}
-            <div className="branding-preview-box">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>
-                  LIVE MOCKUP PREVIEW
-                </span>
-                <span style={{ fontSize: '0.72rem', background: '#f1f5f9', padding: '2px 8px', borderRadius: 4, color: '#475569', fontWeight: 700 }}>
-                  {brandingMethod === 'soy-ink' ? '💧 Water Soy Ink' : brandingMethod === 'embossing' ? '⚡ 3D Blind Embossing' : '🏷️ Printed Band'}
-                </span>
+          {/* 2 Core Direct Container Branding Cards */}
+          <div className="branding-cards-grid">
+            {/* Card 1: Food-Safe Inks */}
+            <div className="branding-cap-card">
+              <div className="branding-card-icon-wrap" style={{ background: '#ecfdf5', color: '#059669' }}>
+                💧
               </div>
-
-              <div
-                className="mockup-container"
-                style={{
-                  backgroundImage: `url(${brandingType === 'Burger Box'
-                    ? '/images/burger_box_5x5.png'
-                    : '/images/clamshell_7x5.png'
-                    })`,
-                  justifyContent: brandingPlacement === 'corner' ? 'flex-start' : brandingPlacement === 'latch' ? 'flex-end' : 'center',
-                  alignItems: brandingPlacement === 'latch' ? 'flex-end' : brandingPlacement === 'corner' ? 'flex-start' : 'center',
-                  padding: 16
-                }}
-              >
-                {brandingLogoImage ? (
-                  <div
-                    style={{
-                      maxHeight: 90,
-                      maxWidth: 160,
-                      padding: 8,
-                      borderRadius: 8,
-                      background: brandingMethod === 'embossing' ? 'rgba(230, 225, 215, 0.7)' : 'rgba(255, 255, 255, 0.85)',
-                      boxShadow: brandingMethod === 'embossing' ? 'inset 2px 2px 4px rgba(0,0,0,0.3), 1px 1px 2px rgba(255,255,255,0.8)' : '0 4px 12px rgba(0,0,0,0.1)',
-                      border: brandingMethod === 'embossing' ? '1px inset rgba(0,0,0,0.2)' : `2px solid ${brandingColor}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      filter: brandingMethod === 'embossing' ? 'contrast(0.7) opacity(0.85)' : 'none'
-                    }}
-                  >
-                    <img src={brandingLogoImage} alt="Custom Logo Preview" style={{ maxHeight: 70, maxWidth: 140, objectFit: 'contain' }} />
-                  </div>
-                ) : (
-                  <div
-                    className="mockup-logo-overlay"
-                    style={{
-                      color: brandingMethod === 'embossing' ? '#78350f' : brandingColor,
-                      borderColor: brandingMethod === 'embossing' ? '#a16207' : brandingColor,
-                      background: brandingMethod === 'embossing' ? 'rgba(245, 240, 230, 0.75)' : 'rgba(255, 255, 255, 0.9)',
-                      boxShadow: brandingMethod === 'embossing' ? 'inset 2px 2px 4px rgba(0,0,0,0.25)' : '0 4px 15px rgba(0,0,0,0.1)',
-                      textShadow: brandingMethod === 'embossing' ? '1px 1px 0px rgba(255,255,255,0.8)' : 'none'
-                    }}
-                  >
-                    {brandingText || 'YOUR LOGO'}
-                  </div>
-                )}
-              </div>
-
-              <p style={{ marginTop: 14, fontSize: '0.82rem', color: '#64748b', lineHeight: 1.4 }}>
-                {brandingLogoImage ? '✔ Custom artwork loaded.' : 'Type your brand name or upload a logo file to see your design on unbleached sugarcane bagasse fiber.'}
+              <span className="branding-cap-tag" style={{ background: '#ecfdf5', color: '#047857' }}>
+                Direct Surface Print
+              </span>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px', color: '#0f172a' }}>
+                Food-Safe Soy &amp; Water Inks
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                Precision 1 to 2 color spot printing applied directly onto unbleached sugarcane bagasse lids or outer walls.
               </p>
+              <ul className="branding-features-list">
+                <li><span className="bullet-check">✓</span> <span>100% non-toxic, odourless &amp; certified compostable</span></li>
+                <li><span className="bullet-check">✓</span> <span>Sharp edge registration on textured fiber surfaces</span></li>
+                <li><span className="bullet-check">✓</span> <span>Heat, grease &amp; microwave safe with zero chemical smell</span></li>
+                <li><span className="bullet-check">✓</span> <span>Spot Pantone matching for exact brand consistency</span></li>
+              </ul>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => handleGoToCustomPrintContact()}
+                style={{ width: '100%', marginTop: 20, padding: '12px 14px', fontSize: '0.88rem', fontWeight: 700 }}
+              >
+                Enquire Direct Print →
+              </button>
             </div>
 
-            {/* Configurator & Upload Options */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Option A: Upload Artwork or Type Brand Text */}
+            {/* Card 2: 3D Blind Embossing */}
+            <div className="branding-cap-card">
+              <div className="branding-card-icon-wrap" style={{ background: '#fffbeb', color: '#d97706' }}>
+                ⚡
+              </div>
+              <span className="branding-cap-tag" style={{ background: '#fffbeb', color: '#b45309' }}>
+                Zero-Ink Tactile Relief
+              </span>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px', color: '#0f172a' }}>
+                3D Blind Embossing (Zero Ink)
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                Tactile raised or debossed brand mark molded directly into the container lid during thermoforming.
+              </p>
+              <ul className="branding-features-list">
+                <li><span className="bullet-check">✓</span> <span>100% raw unbleached fiber — completely ink-free</span></li>
+                <li><span className="bullet-check">✓</span> <span>Ultra-premium, sophisticated tactile feel</span></li>
+                <li><span className="bullet-check">✓</span> <span>Permanent mold tooling that never fades or rubs off</span></li>
+                <li><span className="bullet-check">✓</span> <span>Ideal for eco-luxury, artisanal cafes &amp; farm shops</span></li>
+              </ul>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => handleGoToCustomPrintContact()}
+                style={{ width: '100%', marginTop: 20, padding: '12px 14px', fontSize: '0.88rem', fontWeight: 700 }}
+              >
+                Enquire 3D Emboss →
+              </button>
+            </div>
+          </div>
+
+          {/* Bridge Callout: Printed Kraft Sleeves Product */}
+          <div style={{
+            marginTop: 28,
+            background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+            border: '1px solid #cbd5e1',
+            borderRadius: 16,
+            padding: '20px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 20,
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: '2rem' }}>🏷️</div>
               <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.9rem' }}>
-                  1. Brand Artwork / Logo Source
-                </label>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                  <label style={{
-                    border: !brandingLogoImage ? '2px solid #059669' : '1px solid #cbd5e1',
-                    background: !brandingLogoImage ? '#ecfdf5' : '#f8fafc',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    <input
-                      type="radio"
-                      name="logoSource"
-                      checked={!brandingLogoImage}
-                      onChange={() => setBrandingLogoImage(null)}
-                    />
-                    <span>Type Brand Name</span>
-                  </label>
-
-                  <label style={{
-                    border: brandingLogoImage ? '2px solid #059669' : '1px solid #cbd5e1',
-                    background: brandingLogoImage ? '#ecfdf5' : '#f8fafc',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    <input
-                      type="radio"
-                      name="logoSource"
-                      checked={!!brandingLogoImage}
-                      onChange={() => {
-                        const fileInput = document.getElementById('logo-upload-input');
-                        if (fileInput) fileInput.click();
-                      }}
-                    />
-                    <span>Upload Logo File</span>
-                  </label>
-                </div>
-
-                {!brandingLogoImage ? (
-                  <input
-                    type="text"
-                    value={brandingText}
-                    onChange={(e) => setBrandingText(e.target.value)}
-                    maxLength={25}
-                    placeholder="e.g. URBAN BITES / THE GREEN DELI"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      border: '1px solid #cbd5e1',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f1f5f9', padding: '8px 12px', borderRadius: 8 }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', flex: 1 }}>✔ Logo Image Uploaded</span>
-                    <button
-                      type="button"
-                      onClick={() => setBrandingLogoImage(null)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem' }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-
-                <input
-                  id="logo-upload-input"
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (evt) => {
-                        if (evt.target?.result) {
-                          setBrandingLogoImage(evt.target.result as string);
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Option B: Print Technique Selection */}
-              <div>
-                <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.9rem' }}>
-                  2. Select Printing Technique
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {[
-                    { id: 'soy-ink', label: '💧 Soy Ink', desc: '1-2 Color Print' },
-                    { id: 'embossing', label: '⚡ Blind Emboss', desc: '3D Texture (Ink Free)' },
-                    { id: 'sleeve', label: '🏷️ Kraft Sleeve', desc: 'Printed Band Wrap' }
-                  ].map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setBrandingMethod(m.id as any)}
-                      style={{
-                        padding: '8px 6px',
-                        borderRadius: '8px',
-                        border: brandingMethod === m.id ? '2px solid #059669' : '1px solid #cbd5e1',
-                        background: brandingMethod === m.id ? '#ecfdf5' : '#ffffff',
-                        color: brandingMethod === m.id ? '#047857' : '#334155',
-                        fontWeight: 700,
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                        textAlign: 'center'
-                      }}
-                    >
-                      <div style={{ fontWeight: 800 }}>{m.label}</div>
-                      <div style={{ fontSize: '0.68rem', fontWeight: 500, color: '#64748b' }}>{m.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Option C: Packaging Model & Ink Color */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.85rem' }}>
-                    3. Packaging Container
-                  </label>
-                  <select
-                    value={brandingType}
-                    onChange={(e) => setBrandingType(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontFamily: 'inherit',
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    <option value="Burger Box">Burger Clamshell</option>
-                    <option value="Square Clamshell">Square Meal Box</option>
-                    <option value="Rectangular Pack">2-Compartment Pack</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.85rem' }}>
-                    4. Placement
-                  </label>
-                  <select
-                    value={brandingPlacement}
-                    onChange={(e) => setBrandingPlacement(e.target.value as any)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontFamily: 'inherit',
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    <option value="center">Center Top Lid</option>
-                    <option value="corner">Top-Left Corner</option>
-                    <option value="latch">Front Latch / Flap</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Ink Color Selector (If Soy Ink Selected) */}
-              {brandingMethod === 'soy-ink' && (
-                <div>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: 6, fontSize: '0.85rem' }}>
-                    5. Soy-Ink Color Palette
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {[
-                      { name: 'Eco Emerald', hex: '#059669' },
-                      { name: 'Sugarcane Amber', hex: '#d97706' },
-                      { name: 'Deep Charcoal', hex: '#0f172a' },
-                      { name: 'Kraft Brown', hex: '#78350f' }
-                    ].map((color) => (
-                      <button
-                        key={color.hex}
-                        type="button"
-                        onClick={() => setBrandingColor(color.hex)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '999px',
-                          border: brandingColor === color.hex ? '2px solid #000' : '1px solid #cbd5e1',
-                          background: color.hex,
-                          color: '#fff',
-                          fontWeight: 700,
-                          fontSize: '0.75rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {color.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* CTA Action */}
-              <div style={{ marginTop: 6 }}>
-                <button
-                  type="button"
-                  className="button button-eco"
-                  style={{ width: '100%', padding: '14px', fontSize: '0.95rem' }}
-                  onClick={() => {
-                    setIsSampleModalOpen(true);
-                    showToast('Custom branding configuration attached to sample request!');
-                  }}
-                >
-                  🎁 Request Physical Sample & Free 3D Proof
-                </button>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', textAlign: 'center', marginTop: 6 }}>
-                  ⚡ Zero commitment required • 24-hour response from our UK artwork desk
-                </div>
+                <strong style={{ fontSize: '0.98rem', color: '#0f172a', display: 'block', marginBottom: 2 }}>
+                  Prefer Flexible Full-Colour Packaging Without Plate Fees?
+                </strong>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>
+                  Order <strong>Custom Printed Kraft Sleeves &amp; Belly Bands</strong> directly from our product catalog (from £0.11/unit • Low MOQ from 1,000 pcs).
+                </p>
               </div>
             </div>
+
+            <button
+              type="button"
+              className="button button-eco"
+              onClick={() => {
+                setSelectedCategory('Custom');
+                const catalogEl = document.getElementById('catalog');
+                if (catalogEl) {
+                  catalogEl.scrollIntoView({ behavior: 'smooth' });
+                }
+                showToast('Filtered catalog to Custom Printed Packaging & Sleeves!');
+              }}
+              style={{ padding: '11px 20px', fontSize: '0.88rem', fontWeight: 700, whiteSpace: 'nowrap' }}
+            >
+              📦 View Kraft Sleeves Product →
+            </button>
           </div>
         </section>
 
@@ -1193,36 +1094,6 @@ function App() {
           </div>
         </section>
 
-        {/* Process Section */}
-        <section className="process-section">
-          <div className="section-heading">
-            <span className="eyebrow">Ordering Workflow</span>
-            <h2>Four Easy Steps to Wholesale Bagasse Supply</h2>
-          </div>
-
-          <div className="timeline-grid">
-            <div className="timeline-card">
-              <div className="timeline-num">01</div>
-              <h3>Select Stock or Custom Range</h3>
-              <p>Choose your required clamshell dimensions, bowl capacities, or custom print options.</p>
-            </div>
-            <div className="timeline-card">
-              <div className="timeline-num">02</div>
-              <h3>Instant Volume Quote</h3>
-              <p>Add products to your Quote Builder to review tiered carton discounts and pallet freight rates.</p>
-            </div>
-            <div className="timeline-card">
-              <div className="timeline-num">03</div>
-              <h3>Free Physical Samples</h3>
-              <p>Test container durability, microwave performance, and meal fitting with a free sample kit.</p>
-            </div>
-            <div className="timeline-card">
-              <div className="timeline-num">04</div>
-              <h3>Fast Dispatch & Delivery</h3>
-              <p>24h dispatch for ready-stock items or scheduled recurring deliveries for multi-site chains.</p>
-            </div>
-          </div>
-        </section>
 
         {/* FAQ Accordion Section */}
         <section id="faq" style={{ marginTop: 70 }}>
@@ -1278,7 +1149,11 @@ function App() {
         </section>
 
         <div style={{ marginTop: 80 }}>
-          <ContactSection onToast={showToast} />
+          <ContactSection
+            onToast={showToast}
+            selectedInquiryType={contactInquiryType}
+            selectedCustomPrintMethod={contactPrintMethod}
+          />
         </div>
       </main>
 
@@ -1315,14 +1190,22 @@ function App() {
               ) : (
                 <>
                   <div style={{ marginBottom: 20 }}>
-                    {quoteCart.map(({ product, cartons }) => {
-                      const unitPrice = getUnitPrice(product, cartons);
+                    {quoteCart.map(({ product, cartons, selectedSize }) => {
+                      const unitPrice = getUnitPrice(product, cartons, selectedSize);
                       const itemTotal = cartons * product.specs.packSize * unitPrice;
+                      const cartKey = product.id + (selectedSize ? '-' + selectedSize : '');
                       return (
-                        <div key={product.id} className="cart-item-row">
+                        <div key={cartKey} className="cart-item-row">
                           <img src={product.image} alt={product.name} className="cart-item-img" />
                           <div className="cart-item-info">
                             <h4>{product.name}</h4>
+                            {selectedSize && (
+                              <div style={{ marginTop: 2, marginBottom: 4 }}>
+                                <span style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#0f172a', fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>
+                                  Size: {selectedSize}
+                                </span>
+                              </div>
+                            )}
                             <div className="units-lbl">
                               {cartons} ctn ({cartons * product.specs.packSize} pcs) @ £{unitPrice.toFixed(2)}/unit
                             </div>
@@ -1334,7 +1217,7 @@ function App() {
                             <button
                               type="button"
                               className="qty-btn"
-                              onClick={() => handleUpdateCartons(product.id, -1)}
+                              onClick={() => handleUpdateCartons(product.id, -1, selectedSize)}
                             >
                               -
                             </button>
@@ -1342,14 +1225,14 @@ function App() {
                             <button
                               type="button"
                               className="qty-btn"
-                              onClick={() => handleUpdateCartons(product.id, 1)}
+                              onClick={() => handleUpdateCartons(product.id, 1, selectedSize)}
                             >
                               +
                             </button>
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleRemoveFromCart(product.id)}
+                            onClick={() => handleRemoveFromCart(product.id, selectedSize)}
                             style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 800 }}
                           >
                             ✕
@@ -1636,9 +1519,27 @@ function App() {
               <div>
                 <span className="product-type">{activeSpecProduct.type}</span>
                 <h2 style={{ margin: '4px 0', fontSize: '1.4rem' }}>{activeSpecProduct.name}</h2>
-                <span className="eyebrow">CODE: {activeSpecProduct.modelCode}</span>
+                <span className="eyebrow">
+                  {activeSpecProduct.category === 'Custom' ? 'CODE: CUSTOM' : `CODE: ${activeSpecProduct.modelCode}`}
+                </span>
               </div>
             </div>
+
+            {activeSpecProduct.highlights && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+                <strong style={{ fontSize: '0.88rem', color: '#0f172a', display: 'block', marginBottom: 8 }}>
+                  Key Advantages &amp; Features:
+                </strong>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.84rem', color: '#475569' }}>
+                  {activeSpecProduct.highlights.map((h, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ color: '#059669', fontWeight: 800 }}>✓</span>
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <h3 style={{ fontSize: '1.05rem', marginBottom: 12 }}>Technical Specification Sheet</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, fontSize: '0.9rem' }}>
@@ -1674,13 +1575,54 @@ function App() {
               </tbody>
             </table>
 
+            {activeSpecProduct.sizeOptions && (
+              <div style={{ marginTop: 16, marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px' }}>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: '#0f172a', marginBottom: 4 }}>
+                  📏 Standard Size Options &amp; Compatible Container Models
+                </strong>
+                <p style={{ margin: '0 0 10px', fontSize: '0.78rem', color: '#64748b' }}>
+                  Each sleeve is pre-scored and die-cut to wrap securely over the perimeter of your selected container:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {activeSpecProduct.sizeOptions.map((opt) => (
+                    <div
+                      key={opt.code}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        padding: '8px 12px',
+                        flexWrap: 'wrap',
+                        gap: 6
+                      }}
+                    >
+                      <div>
+                        <strong style={{ fontSize: '0.84rem', color: '#0f172a' }}>{opt.name}</strong>
+                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Box Dimensions: {opt.boxSize}</div>
+                      </div>
+                      <span style={{ fontSize: '0.74rem', background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                        Band Flat: {opt.flatSize}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 type="button"
                 className="button button-primary"
                 style={{ flexGrow: 1 }}
                 onClick={() => {
-                  handleAddToCart(activeSpecProduct, 1);
+                  handleAddToCart(
+                    activeSpecProduct,
+                    1,
+                    selectedProductSizes[activeSpecProduct.id] || activeSpecProduct.sizeOptions?.[0].name
+                  );
                   setActiveSpecProduct(null);
                 }}
               >
