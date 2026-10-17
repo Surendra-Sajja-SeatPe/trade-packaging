@@ -13,7 +13,8 @@ export const INQUIRY_TYPE_LABELS: Record<ContactInquiry['inquiryType'], string> 
   custom_printing: 'Custom Logo & Print Branding',
   pallet_discount: 'Pallet & Bulk Container Pricing',
   distributor_account: 'Distributor & Reseller Account',
-  sample_kit: 'Free Sample Pack Request'
+  sample_kit: 'Free Sample Pack Request',
+  others: 'Others'
 };
 
 export const CUSTOM_PRINT_METHOD_LABELS: Record<CustomPrintMethod, string> = {
@@ -123,7 +124,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 <div className="channel-icon">📞</div>
                 <div>
                   <strong>Phone</strong>
-                  <a href="tel:+442081234567" className="channel-link">+44 (0) 20 8123 4567</a>
+                  <a href="tel:+447442002741" className="channel-link">+44-7442002741</a>
                   <span className="channel-sub">Mon–Fri, 8am–6pm GMT</span>
                 </div>
               </div>
@@ -132,7 +133,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 <div className="channel-icon">✉️</div>
                 <div>
                   <strong>Email</strong>
-                  <a href="mailto:trade@packtrade-bagasse.co.uk" className="channel-link">trade@packtrade-bagasse.co.uk</a>
+                  <a href="mailto:surendrasajja549@gmail.com" className="channel-link">surendrasajja549@gmail.com</a>
                   <span className="channel-sub">Fast 2-hour response</span>
                 </div>
               </div>
@@ -141,7 +142,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 <div className="channel-icon">📍</div>
                 <div>
                   <strong>Warehouse &amp; Hub</strong>
-                  <span className="channel-text">Apex Trade Park, Birmingham, UK</span>
+                  <span className="channel-text">Parkview Industrial Estate, Hartlepool, UK</span>
                 </div>
               </div>
             </div>
@@ -274,6 +275,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                     <option value="pallet_discount">Pallet &amp; Bulk Container Pricing</option>
                     <option value="distributor_account">Distributor &amp; Reseller Account</option>
                     <option value="sample_kit">Free Sample Pack Request</option>
+                    <option value="others">Others</option>
                   </select>
                 </div>
 

@@ -314,7 +314,7 @@ function App() {
             📦 Ready to Order & Issue Proforma Invoice?
           </div>
           <div style="font-size: 12px; color: #064e3b; line-height: 1.5;">
-            This document is a formal wholesale price quote. To place an order, specify your delivery address or warehouse pickup, and receive an official <strong>Proforma Invoice with BACS bank transfer details</strong> for 24h dispatch, visit <strong>packtrade.co.uk</strong> or call our trade desk at <strong>020 8123 4567</strong>.
+            This document is a formal wholesale price quote. To place an order, specify your delivery address or warehouse pickup, and receive an official <strong>Proforma Invoice with BACS bank transfer details</strong> for 24h dispatch, visit <strong>packtrade.co.uk</strong> or call our trade desk at <strong>+44 7442 002741</strong>.
           </div>
         </div>
 
